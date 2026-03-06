@@ -62,7 +62,7 @@ lib/
 
 - **Testing:** 
   - **Unit tests for Business Logic:** Isolating state controllers and repository layers using `mocktail` to ensure predictable data flows.
-  - **UI tests for critical flows:** Validating widget trees and modal behaviors (e.g., Authentication Prompts, Guest Guards) in isolated `ProviderScope` environments.
+  - **UI tests for critical flows:** Validating widget trees and modal behaviors (e.g. , Authentication Prompts, Guest Guards) in isolated `ProviderScope` environments.
 - **Automation & Code Quality:**
   - Automated **Linting** utilizing `flutter analyze` and custom lint rules to enforce strict Dart practices.
   - Test suites are designed for seamless integration into **GitHub Actions** for continuous integration.
@@ -102,3 +102,4 @@ To run this project locally, ensure you have the Flutter SDK installed on your m
    ```bash
    flutter run
    ```
+ 
