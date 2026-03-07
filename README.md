@@ -2,9 +2,9 @@
 
 > A robust, high-performance Flutter application designed for seamless visual discovery, curation, and inspiration.
 
-| Home Feed Placeholder | Collection Details Placeholder |
+| Home Feed Placeholder | Profile Page Placeholder |
 | :---: | :---: |
-| <img src="feed_screen.png" width="250" alt="Home Feed Screen"/> | <img src="profile_screen.png" width="250" alt="Profile Screen"/> |
+| <img src="assets/feed_screen.jpg" width="250" alt="Home Feed Screen"/> | <img src="assets/profile_screen.jpg" width="250" alt="Profile Screen"/> |
 
 ---
 
