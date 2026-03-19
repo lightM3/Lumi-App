@@ -103,10 +103,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: isCurrentUser
             ? [
                 IconButton(
-                  icon: const Icon(LucideIcons.share2, color: Colors.white),
-                  onPressed: () {},
-                ),
-                IconButton(
                   icon: const Icon(
                     LucideIcons.moreVertical,
                     color: Colors.white,
@@ -177,11 +173,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         color: AppColors.accentCream,
                                       ),
                                     ),
-                                    errorWidget: (context, url, err) => const Icon(
-                                      LucideIcons.imageOff,
-                                      color: Colors.white,
-                                      size: 64,
-                                    ),
+                                    errorWidget: (context, url, err) =>
+                                        const Icon(
+                                          LucideIcons.imageOff,
+                                          color: Colors.white,
+                                          size: 64,
+                                        ),
                                   ),
                                 ),
                               ),
