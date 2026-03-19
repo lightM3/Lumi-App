@@ -29,6 +29,7 @@ class FeedCollectionModel {
     required this.coverImageUrl,
     required this.aspectRatio,
     required this.photos,
+    this.description,
     this.dominantColor,
     required this.userId,
     required this.authorUsername,
@@ -45,6 +46,7 @@ class FeedCollectionModel {
   final String coverImageUrl;
   final double aspectRatio;
   final List<FeedPhotoItem> photos; // All photos for the detail screen
+  final String? description; // Optional description
   final String? dominantColor; // Hex string, e.g. "#6C4FCA"
   final String userId; // Owner ID
   final String authorUsername;
@@ -61,6 +63,7 @@ class FeedCollectionModel {
     String? coverImageUrl,
     double? aspectRatio,
     List<FeedPhotoItem>? photos,
+    String? description,
     String? dominantColor,
     String? userId,
     String? authorUsername,
@@ -77,6 +80,7 @@ class FeedCollectionModel {
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       aspectRatio: aspectRatio ?? this.aspectRatio,
       photos: photos ?? this.photos,
+      description: description ?? this.description,
       dominantColor: dominantColor ?? this.dominantColor,
       userId: userId ?? this.userId,
       authorUsername: authorUsername ?? this.authorUsername,
@@ -98,6 +102,7 @@ class FeedCollectionModel {
     final collectionId = map['id'] as String;
     final userId = map['user_id'] as String;
     final title = map['title'] as String;
+    final description = map['description'] as String?;
     final dominantColor = map['dominant_color'] as String?;
     final isPrivate = map['is_private'] as bool? ?? false;
     final createdAt = DateTime.parse(map['created_at'] as String);
@@ -193,6 +198,7 @@ class FeedCollectionModel {
       coverImageUrl: coverImageUrl,
       aspectRatio: aspectRatio,
       photos: parsedPhotos,
+      description: description,
       dominantColor: dominantColor,
       userId: userId,
       authorUsername: username,

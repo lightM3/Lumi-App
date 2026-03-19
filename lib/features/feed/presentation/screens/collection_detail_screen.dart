@@ -40,6 +40,8 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
   late AnimationController _heartAnimationController;
   late Animation<double> _heartScaleAnimation;
   bool _showHeart = false;
+  
+  bool _isDescriptionExpanded = false;
 
   @override
   void initState() {
@@ -408,6 +410,53 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
                                     color: Colors.white,
                                   ),
                                 ),
+                                if (widget.collection.description != null &&
+                                    widget.collection.description!.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (widget.collection.description!.length > 50) {
+                                        setState(() {
+                                          _isDescriptionExpanded = !_isDescriptionExpanded;
+                                        });
+                                      }
+                                    },
+                                    child: AnimatedCrossFade(
+                                      duration: const Duration(milliseconds: 300),
+                                      crossFadeState: _isDescriptionExpanded
+                                          ? CrossFadeState.showSecond
+                                          : CrossFadeState.showFirst,
+                                      firstChild: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: widget.collection.description!.length > 50
+                                                  ? '${widget.collection.description!.substring(0, 50)}...'
+                                                  : widget.collection.description!,
+                                              style: AppTextStyles.bodyMedium.copyWith(
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                            if (widget.collection.description!.length > 50)
+                                              TextSpan(
+                                                text: ' Devamını oku',
+                                                style: AppTextStyles.labelSmall.copyWith(
+                                                  color: AppColors.accentCream,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      secondChild: Text(
+                                        widget.collection.description!,
+                                        style: AppTextStyles.bodyMedium.copyWith(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: AppSpacing.md),
                                 Row(
                                   children: [
