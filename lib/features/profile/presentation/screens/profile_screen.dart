@@ -152,34 +152,71 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(
-                            0xFF6C4FCA,
-                          ), // Purple border as in design
-                          width: 2,
-                        ),
-                        image: user?.avatarUrl != null
-                            ? DecorationImage(
-                                image: CachedNetworkImageProvider(
-                                  user!.avatarUrl!,
+                    GestureDetector(
+                      onLongPress: () {
+                        if (user?.avatarUrl != null) {
+                          HapticFeedback.heavyImpact();
+                          showDialog(
+                            context: context,
+                            barrierColor: Colors.black87,
+                            builder: (ctx) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              insetPadding: EdgeInsets.zero,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(ctx),
+                                child: InteractiveViewer(
+                                  clipBehavior: Clip.none,
+                                  minScale: 1.0,
+                                  maxScale: 4.0,
+                                  child: CachedNetworkImage(
+                                    imageUrl: user!.avatarUrl!,
+                                    fit: BoxFit.contain,
+                                    width: MediaQuery.sizeOf(context).width,
+                                    placeholder: (context, url) => const Center(
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.accentCream,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, err) => const Icon(
+                                      LucideIcons.imageOff,
+                                      color: Colors.white,
+                                      size: 64,
+                                    ),
+                                  ),
                                 ),
-                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(
+                              0xFF6C4FCA,
+                            ), // Purple border as in design
+                            width: 2,
+                          ),
+                          image: user?.avatarUrl != null
+                              ? DecorationImage(
+                                  image: CachedNetworkImageProvider(
+                                    user!.avatarUrl!,
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: user?.avatarUrl == null
+                            ? const Icon(
+                                LucideIcons.user,
+                                size: 40,
+                                color: AppColors.inkMuted,
                               )
                             : null,
                       ),
-                      child: user?.avatarUrl == null
-                          ? const Icon(
-                              LucideIcons.user,
-                              size: 40,
-                              color: AppColors.inkMuted,
-                            )
-                          : null,
                     ),
                     const SizedBox(width: AppSpacing.lg),
                     // Stats
