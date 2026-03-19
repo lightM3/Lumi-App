@@ -1,10 +1,9 @@
-// lib/features/profile/presentation/controllers/board_detail_controller.dart
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/board_model.dart';
 import '../../../feed/domain/models/feed_collection_model.dart';
-import 'profile_controller.dart'; // boardRepositoryProvider is here
+import 'profile_controller.dart';
 
 class BoardDetailController
     extends FamilyAsyncNotifier<List<FeedCollectionModel>, String> {

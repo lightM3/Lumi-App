@@ -6,10 +6,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/supabase_config.dart';
+import 'core/providers/storage_providers.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,11 +51,19 @@ Future<void> main() async {
     ),
   );
 
-  // ── 5. Run app ─────────────────────────────────────────────────────────────
+  // ── 5. Initialise SharedPreferences ────────────────────────────────────────
+  final sharedPrefs = await SharedPreferences.getInstance();
+
+  // ── 6. Run app ─────────────────────────────────────────────────────────────
   runApp(
     // ProviderScope is the root of the Riverpod provider tree.
     // All feature providers (auth, feed, curation, profile) live under here.
-    const ProviderScope(child: LumiApp()),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPrefs),
+      ],
+      child: const LumiApp(),
+    ),
   );
 }
 

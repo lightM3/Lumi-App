@@ -88,6 +88,66 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             icon: const Icon(LucideIcons.search),
             onPressed: () => context.push('/search'),
           ),
+          PopupMenuButton<FeedSortType>(
+            icon: const Icon(LucideIcons.listFilter),
+            tooltip: 'Sıralama Seçimi',
+            initialValue: feedNotifier.sortType,
+            color: AppColors.inkSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            onSelected: (FeedSortType newType) {
+              feedNotifier.setSortType(newType);
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem(
+                value: FeedSortType.random,
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.shuffle,
+                      color: feedNotifier.sortType == FeedSortType.random
+                          ? AppColors.accentCream
+                          : AppColors.inkMuted,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rastgele',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: feedNotifier.sortType == FeedSortType.random
+                            ? AppColors.accentCream
+                            : AppColors.inkForeground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: FeedSortType.latest,
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.clock,
+                      color: feedNotifier.sortType == FeedSortType.latest
+                          ? AppColors.accentCream
+                          : AppColors.inkMuted,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'En Yeniler',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: feedNotifier.sortType == FeedSortType.latest
+                            ? AppColors.accentCream
+                            : AppColors.inkForeground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: feedState.when(
@@ -103,72 +163,90 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(feedControllerProvider.notifier).refreshFeed(),
-            color: AppColors.accentCream,
-            backgroundColor: AppColors.inkSurface,
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.md,
-                  ),
-                  sliver: SliverMasonryGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: AppSpacing.md,
-                    crossAxisSpacing: AppSpacing.md,
-                    childCount: collections.length,
-                    itemBuilder: (context, index) {
-                      final collection = collections[index];
-                      return FeedPhotoCard(
-                        collection: collection,
-                        onTap: () {
-                          context.push(
-                            '/collection/${collection.collectionId}',
-                            extra: collection,
+          return Stack(
+            children: [
+              RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(feedControllerProvider.notifier).refreshFeed(),
+                color: AppColors.accentCream,
+                backgroundColor: AppColors.inkSurface,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.md,
+                      ),
+                      sliver: SliverMasonryGrid.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: AppSpacing.md,
+                        crossAxisSpacing: AppSpacing.md,
+                        childCount: collections.length,
+                        itemBuilder: (context, index) {
+                          final collection = collections[index];
+                          return FeedPhotoCard(
+                            collection: collection,
+                            onTap: () {
+                              context.push(
+                                '/collection/${collection.collectionId}',
+                                extra: collection,
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
-                ),
-                if (feedNotifier.isLoadingMore)
-                  const SliverPadding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                    sliver: SliverToBoxAdapter(
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.accentCream,
-                        ),
                       ),
                     ),
-                  ),
-                if (feedNotifier.hasReachedMax && collections.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.only(
-                      bottom: 120,
-                      top: AppSpacing.md,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: Center(
-                        child: Text(
-                          "That's all for now.",
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.inkMuted,
+                    if (feedNotifier.isLoadingMore)
+                      const SliverPadding(
+                        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                        sliver: SliverToBoxAdapter(
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.accentCream,
+                            ),
                           ),
                         ),
                       ),
+                    if (feedNotifier.hasReachedMax && collections.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.only(
+                          bottom: 120,
+                          top: AppSpacing.md,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: Center(
+                            child: Text(
+                              "That's all for now.",
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      const SliverPadding(
+                        padding: EdgeInsets.only(bottom: 100),
+                      ), // Space for bottom nav
+                  ],
+                ),
+              ),
+              // V1.2: Smooth Overlay Loading
+              // Displays a semi-transparent loading screen over the current feed
+              // while sorting is being applied (avoids full screen flash)
+              if (feedState.isLoading && !feedNotifier.isLoadingMore && collections.isNotEmpty)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.accentCream,
+                      ),
                     ),
-                  )
-                else
-                  const SliverPadding(
-                    padding: EdgeInsets.only(bottom: 100),
-                  ), // Space for bottom nav
-              ],
-            ),
+                  ),
+                ),
+            ],
           );
         },
         loading: () => const Center(

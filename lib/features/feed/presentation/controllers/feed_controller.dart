@@ -6,6 +6,10 @@ import '../../domain/models/feed_collection_model.dart';
 import '../../data/supabase_feed_repository.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../profile/presentation/controllers/board_detail_controller.dart';
+import 'package:album/core/providers/storage_providers.dart';
+
+/// Defines the sort options for the Discover feed.
+enum FeedSortType { random, latest }
 
 /// Provides the instance of the SupabaseFeedRepository.
 final feedRepositoryProvider = Provider<SupabaseFeedRepository>((ref) {
@@ -19,8 +23,23 @@ class FeedController extends AsyncNotifier<List<FeedCollectionModel>> {
   int _offset = 0;
   final int _limit = 20;
 
+  /// The current sorting strategy applied to the feed.
+  FeedSortType sortType = FeedSortType.random;
+
+  static const _sortTypeKey = 'feed_sort_type';
+
   @override
   Future<List<FeedCollectionModel>> build() async {
+    // Load persisted sort type
+    final prefs = ref.read(sharedPreferencesProvider);
+    final savedType = prefs.getString(_sortTypeKey);
+    if (savedType != null) {
+      sortType = FeedSortType.values.firstWhere(
+        (e) => e.name == savedType,
+        orElse: () => FeedSortType.random,
+      );
+    }
+
     return _fetchFeed(isRefresh: true);
   }
 
@@ -43,8 +62,9 @@ class FeedController extends AsyncNotifier<List<FeedCollectionModel>> {
 
     _offset += newCollections.length;
 
-    // V1.1: Shuffle the list on refresh for a dynamic discover experience
-    if (isRefresh) {
+    // V1.2: Shuffle the list for a dynamic discover experience
+    // Filter applied: Only shuffle if the sort type is purely random.
+    if (sortType == FeedSortType.random) {
       newCollections.shuffle();
     }
 
@@ -53,8 +73,21 @@ class FeedController extends AsyncNotifier<List<FeedCollectionModel>> {
 
   /// Manually triggers a reload (e.g., from a RefreshIndicator).
   Future<void> refreshFeed() async {
-    state = const AsyncLoading();
+    // V1.2: Retain previous data while loading for a smoother transition
+    state = const AsyncLoading<List<FeedCollectionModel>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _fetchFeed(isRefresh: true));
+  }
+
+  /// Updates the sorting strategy and immediately refreshes the feed.
+  Future<void> setSortType(FeedSortType type) async {
+    if (sortType == type) return; // Ignore if already set
+
+    sortType = type;
+
+    // Persist selection
+    await ref.read(sharedPreferencesProvider).setString(_sortTypeKey, type.name);
+
+    await refreshFeed();
   }
 
   /// Fetches the next batch of collections and appends them to the current list
