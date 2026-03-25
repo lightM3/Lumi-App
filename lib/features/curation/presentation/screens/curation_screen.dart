@@ -104,6 +104,82 @@ class _CurationScreenState extends ConsumerState<CurationScreen> {
     );
   }
 
+  void _showImageSourceActionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.inkBlack,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.inkMuted.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.inkSurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(LucideIcons.image, color: Colors.white),
+                ),
+                title: Text(
+                  'Choose from Gallery',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(curationControllerProvider.notifier).pickImages();
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.inkSurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(LucideIcons.camera, color: Colors.white),
+                ),
+                title: Text(
+                  'Take a Photo',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(curationControllerProvider.notifier).pickImageFromCamera();
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(curationControllerProvider);
@@ -156,9 +232,7 @@ class _CurationScreenState extends ConsumerState<CurationScreen> {
                                           .setActiveIndex(i);
                                     }
                                   },
-                                  onAddMore: () => ref
-                                      .read(curationControllerProvider.notifier)
-                                      .pickImages(),
+                                  onAddMore: () => _showImageSourceActionSheet(context),
                                   onRemove: (i) => ref
                                       .read(curationControllerProvider.notifier)
                                       .removePhoto(i),
@@ -166,12 +240,7 @@ class _CurationScreenState extends ConsumerState<CurationScreen> {
                               : _EmptyPickerArea(
                                   onTap: isLoading
                                       ? () {}
-                                      : () => ref
-                                            .read(
-                                              curationControllerProvider
-                                                  .notifier,
-                                            )
-                                            .pickImages(),
+                                      : () => _showImageSourceActionSheet(context),
                                 ),
                         ],
                       ),

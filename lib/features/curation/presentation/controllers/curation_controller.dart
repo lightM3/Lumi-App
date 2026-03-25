@@ -105,6 +105,30 @@ class CurationController extends AsyncNotifier<CurationState> {
     );
   }
 
+  // ── Pick Single Image from Camera ─────────────────────────────────────────
+
+  Future<void> pickImageFromCamera() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 100, // we compress manually
+    );
+    if (picked == null) return;
+
+    final file = File(picked.path);
+    final current = state.value ?? const CurationState();
+
+    // Show selected image immediately
+    state = AsyncData(
+      current.copyWith(
+        selectedFiles: [...current.selectedFiles, file],
+        activeIndex: 0,
+      ),
+    );
+
+    // Extract dominant color for the new photo
+    _extractGlowColors(current.selectedFiles.length, [file]);
+  }
+
   /// Extracts dominant colors for [files] starting at [offset] index,
   /// then updates state with new colors as they resolve.
   Future<void> _extractGlowColors(int offset, List<File> files) async {
