@@ -205,7 +205,7 @@ class _FeedPhotoCardState extends ConsumerState<FeedPhotoCard>
                 ),
               ),
 
-              // Like Counter & Button
+              // Social Actions (Comments & Likes)
               Positioned(
                 right: AppSpacing.xs,
                 bottom: AppSpacing.xs,

@@ -19,6 +19,7 @@ import '../../domain/models/feed_collection_model.dart';
 import '../controllers/feed_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
+import '../../../comment/presentation/widgets/collection_comments_sheet.dart';
 
 class CollectionDetailScreen extends ConsumerStatefulWidget {
   const CollectionDetailScreen({super.key, required this.collection});
@@ -70,6 +71,13 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
         weight: 30,
       ),
     ]).animate(_heartAnimationController);
+
+    // Ensure this collection is tracked in FeedController so that
+    // incrementCommentCount / decrementCommentCount work even when
+    // the detail screen is opened from the profile / board page.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(feedControllerProvider.notifier).registerCollection(widget.collection);
+    });
   }
 
   @override
@@ -516,6 +524,25 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
                                       ),
                                     ),
                                     const Spacer(),
+                                    // Comment Indicator (Stat)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.messageCircle,
+                                          size: 14,
+                                          color: Colors.white54,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          latestCollection.commentCount.toString(),
+                                          style: AppTextStyles.labelSmall.copyWith(
+                                            color: Colors.white54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 8),
                                     // Mini Like Indicator
                                     const Icon(
                                       Icons.favorite,
@@ -539,61 +566,102 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
                     ),
                     const SizedBox(height: AppSpacing.lg),
 
-                    // Thumbnail Gallery
-                    SizedBox(
-                      height: 60,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                        ),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: photos.length,
-                        itemBuilder: (context, index) {
-                          final photo = photos[index];
-                          final isActive = index == _currentIndex;
+                    // Thumbnail Gallery & New Comment Button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 60,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.only(right: 12),
+                                scrollDirection: Axis.horizontal,
+                                itemCount: photos.length,
+                                itemBuilder: (context, index) {
+                                  final photo = photos[index];
+                                  final isActive = index == _currentIndex;
 
-                          return GestureDetector(
-                            onTap: () {
-                              _pageController.animateToPage(
-                                index,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              margin: const EdgeInsets.only(
-                                right: AppSpacing.sm,
+                                  return GestureDetector(
+                                    onTap: () {
+                                      _pageController.animateToPage(
+                                        index,
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      margin: const EdgeInsets.only(
+                                        right: AppSpacing.sm,
+                                      ),
+                                      width: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          AppSpacing.radiusMd,
+                                        ),
+                                        border: Border.all(
+                                          color: isActive
+                                              ? AppColors.accentCream
+                                              : Colors.transparent,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          AppSpacing.radiusMd - 2,
+                                        ),
+                                        child: CachedNetworkImage(
+                                          imageUrl: photo.imageUrl,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Container(
+                                            color: bgColor.withValues(alpha: 0.5),
+                                          ),
+                                          errorWidget: (context, url, _) =>
+                                              Container(color: bgColor),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              width: 60,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusMd,
-                                ),
-                                border: Border.all(
-                                  color: isActive
-                                      ? AppColors.accentCream
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusMd - 2,
-                                ),
-                                child: CachedNetworkImage(
-                                  imageUrl: photo.imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: bgColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          // New Action: Prominent Comment Button
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(30),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Using ImageFilter.blur 
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final isAuth = await GuestGuard.checkAuthAndShowModal(context, ref);
+                                  if (!isAuth) return;
+                                  if (context.mounted) {
+                                    HapticFeedback.selectionClick();
+                                    CollectionCommentsSheet.show(context, latestCollection.collectionId);
+                                  }
+                                },
+                                child: Container(
+                                  height: 60,
+                                  width: 60,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      width: 1,
+                                    ),
                                   ),
-                                  errorWidget: (context, url, _) =>
-                                      Container(color: bgColor),
+                                  child: const Icon(
+                                    LucideIcons.messageCircle,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
                     // Bottom padding for SafeArea

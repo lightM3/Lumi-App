@@ -26,7 +26,7 @@ class SupabaseFeedRepository implements FeedRepository {
       final response = await _supabase
           .from(SupabaseConfig.collectionsTable)
           .select(
-            '*, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id)',
+            '*, comment_count, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id)',
           )
           .eq('is_public', true)
           .eq('is_private', false) // Double-lock: DB-level privacy guard
@@ -89,7 +89,7 @@ class SupabaseFeedRepository implements FeedRepository {
       var query = _supabase
           .from(SupabaseConfig.collectionsTable)
           .select(
-            '*, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id)',
+            '*, comment_count, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id)',
           )
           .eq('user_id', userId);
 

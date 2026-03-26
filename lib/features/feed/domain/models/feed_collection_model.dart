@@ -36,6 +36,7 @@ class FeedCollectionModel {
     this.authorAvatarUrl,
     required this.createdAt,
     this.likeCount = 0,
+    this.commentCount = 0,
     this.isLiked = false,
     this.isBookmarked = false,
     this.isPrivate = false,
@@ -53,6 +54,7 @@ class FeedCollectionModel {
   final String? authorAvatarUrl;
   final DateTime createdAt;
   final int likeCount;
+  final int commentCount;
   final bool isLiked;
   final bool isBookmarked;
   final bool isPrivate;
@@ -70,6 +72,7 @@ class FeedCollectionModel {
     String? authorAvatarUrl,
     DateTime? createdAt,
     int? likeCount,
+    int? commentCount,
     bool? isLiked,
     bool? isBookmarked,
     bool? isPrivate,
@@ -87,6 +90,7 @@ class FeedCollectionModel {
       authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
       createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,
       isBookmarked: isBookmarked ?? this.isBookmarked,
       isPrivate: isPrivate ?? this.isPrivate,
@@ -167,12 +171,25 @@ class FeedCollectionModel {
       // We will parse `like_count` if it exists, otherwise fall back to list length.
     }
 
-    // Safer generic approach:
+    // Safer generic approach for likes:
     if (map.containsKey('like_count')) {
       likeCount = map['like_count'] as int? ?? 0;
     } else if (map['likes'] is List) {
       // Temporary fallback
       likeCount = (map['likes'] as List).length;
+    }
+
+    // Safer generic approach for comments:
+    int parsedCommentCount = 0;
+    final dynamic rawCommentCount = map['comment_count'] ?? map['comments_count'];
+    if (rawCommentCount != null) {
+      if (rawCommentCount is int) {
+        parsedCommentCount = rawCommentCount;
+      } else if (rawCommentCount is num) {
+        parsedCommentCount = rawCommentCount.toInt();
+      } else {
+        parsedCommentCount = int.tryParse(rawCommentCount.toString()) ?? 0;
+      }
     }
 
     // Check if the current user liked it
@@ -205,6 +222,7 @@ class FeedCollectionModel {
       authorAvatarUrl: avatarUrl,
       createdAt: createdAt,
       likeCount: likeCount,
+      commentCount: parsedCommentCount,
       isLiked: isLiked,
       isBookmarked: isBookmarked,
       isPrivate: isPrivate,

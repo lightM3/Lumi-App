@@ -62,11 +62,10 @@ class SupabaseBoardRepository implements BoardRepository {
 
   @override
   Future<List<FeedCollectionModel>> getBoardCollections(String boardId) async {
-    // This requires a complex join to get full collection data
     final response = await _client
         .from('board_collections')
         .select(
-          'collections(*, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id))',
+          'collections(*, comment_count, photos(*), users!collections_user_id_fkey(*), likes(user_id), bookmarks(user_id))',
         )
         .eq('board_id', boardId);
 

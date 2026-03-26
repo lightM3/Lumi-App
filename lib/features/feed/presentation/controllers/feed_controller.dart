@@ -183,6 +183,59 @@ class FeedController extends AsyncNotifier<List<FeedCollectionModel>> {
     }
   }
 
+  /// Optimistically increments the comment count for a given collection.
+  void incrementCommentCount(String collectionId) {
+    if (state.value == null) return;
+    
+    final collections = state.value!;
+    final index = collections.indexWhere((c) => c.collectionId == collectionId);
+    if (index == -1) return;
+
+    final collection = collections[index];
+    final updatedCollection = collection.copyWith(
+      commentCount: collection.commentCount + 1,
+    );
+    
+    final updatedList = List<FeedCollectionModel>.from(collections)
+      ..[index] = updatedCollection;
+
+    state = AsyncData(updatedList);
+  }
+
+  /// Rollback: Decrements the comment count for a given collection on failure.
+  void decrementCommentCount(String collectionId) {
+    if (state.value == null) return;
+    
+    final collections = state.value!;
+    final index = collections.indexWhere((c) => c.collectionId == collectionId);
+    if (index == -1) return;
+
+    final collection = collections[index];
+    // limit decrementing below 0 just in case
+    final newCount = (collection.commentCount - 1).clamp(0, 999999);
+    
+    final updatedCollection = collection.copyWith(
+      commentCount: newCount,
+    );
+    
+    final updatedList = List<FeedCollectionModel>.from(collections)
+      ..[index] = updatedCollection;
+
+    state = AsyncData(updatedList);
+  }
+
+  /// Ensures a collection is tracked in the feed state.
+  /// Called when opening a CollectionDetailScreen from outside the feed
+  /// (e.g. profile/board page). This makes comment count updates work
+  /// even when the collection was not fetched as part of the public feed.
+  void registerCollection(FeedCollectionModel collection) {
+    if (state.value == null) return;
+    final exists = state.value!.any((c) => c.collectionId == collection.collectionId);
+    if (!exists) {
+      state = AsyncData([collection, ...state.value!]);
+    }
+  }
+
   /// Deletes a collection from the feed. Optimistic UI is applied.
   Future<void> deleteCollection(String collectionId) async {
     final previousState = state;
