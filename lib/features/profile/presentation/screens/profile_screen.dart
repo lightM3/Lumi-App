@@ -31,16 +31,41 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _selectedTabIndex = 0; // 0: Created, 1: Boards, 2: Liked
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Refresh safe call on init
     Future.microtask(
       () => ref
           .read(profileControllerProvider(widget.userId).notifier)
           .refreshProfile(),
     );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_selectedTabIndex != 0) return; // Only load more on the main collections tab
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      final state = ref.read(profileControllerProvider(widget.userId));
+      final value = state.value;
+      if (value != null &&
+          !value.isLoadingMoreCollections &&
+          value.hasMoreCollections) {
+        ref
+            .read(profileControllerProvider(widget.userId).notifier)
+            .loadMoreCollections();
+      }
+    }
   }
 
   void _handleLogout() async {
@@ -129,7 +154,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         data: (state) {
           final user = state.user;
-          final collections = state.collections;
 
           return RefreshIndicator(
             color: AppColors.accentCream,
@@ -138,6 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 .read(profileControllerProvider(widget.userId).notifier)
                 .refreshProfile(),
             child: ListView(
+              controller: _scrollController,
               padding: const EdgeInsets.only(
                 left: AppSpacing.lg,
                 right: AppSpacing.lg,
@@ -262,7 +287,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 : null,
                           ),
                           _buildStatColumn(
-                            collections.length.toString(),
+                            state.totalShotsCount.toString(),
                             'SHOTS',
                           ),
                         ],
@@ -449,6 +474,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     );
                   },
                 ),
+                
+                // ── Loading Indicator for Pagination ──
+                if (_selectedTabIndex == 0 && state.isLoadingMoreCollections)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.accentCream),
+                    ),
+                  ),
+
+                // extra padding if needed
+                if (_selectedTabIndex == 0 && !state.hasMoreCollections && state.collections.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Center(
+                      child: Text(
+                        'You\'ve reached the end',
+                        style: AppTextStyles.labelSmall.copyWith(color: AppColors.inkMuted),
+                      ),
+                    ),
+                  ),
               ],
             ),
           );

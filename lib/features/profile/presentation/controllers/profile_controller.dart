@@ -38,7 +38,10 @@ class ProfileState {
     this.totalLikes = 0,
     this.followersCount = 0,
     this.followingCount = 0,
+    this.totalShotsCount = 0,
     this.isFollowing = false,
+    this.hasMoreCollections = true,
+    this.isLoadingMoreCollections = false,
   });
 
   final ProfileUserModel? user;
@@ -49,7 +52,10 @@ class ProfileState {
   final int totalLikes;
   final int followersCount;
   final int followingCount;
+  final int totalShotsCount;
   final bool isFollowing;
+  final bool hasMoreCollections;
+  final bool isLoadingMoreCollections;
 
   ProfileState copyWith({
     ProfileUserModel? user,
@@ -60,7 +66,10 @@ class ProfileState {
     int? totalLikes,
     int? followersCount,
     int? followingCount,
+    int? totalShotsCount,
     bool? isFollowing,
+    bool? hasMoreCollections,
+    bool? isLoadingMoreCollections,
   }) {
     return ProfileState(
       user: user ?? this.user,
@@ -72,7 +81,10 @@ class ProfileState {
       totalLikes: totalLikes ?? this.totalLikes,
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
+      totalShotsCount: totalShotsCount ?? this.totalShotsCount,
       isFollowing: isFollowing ?? this.isFollowing,
+      hasMoreCollections: hasMoreCollections ?? this.hasMoreCollections,
+      isLoadingMoreCollections: isLoadingMoreCollections ?? this.isLoadingMoreCollections,
     );
   }
 }
@@ -103,14 +115,40 @@ class ProfileController extends FamilyAsyncNotifier<ProfileState, String?> {
 
       final profileUser = ProfileUserModel.fromMap(userData);
 
-      // Fetch user's collections
+      // Fetch user's collections (Limit 20 initially)
       final feedRepository = ref.read(feedRepositoryProvider);
-      var collections = await feedRepository.getUserFeed(userIdToFetch);
-
-      // PRIVACY RULE: Filter private collections if not the owner
       final isOwnProfile = userIdToFetch == currentUser.id;
+      
+      var collections = await feedRepository.getUserFeed(
+        userIdToFetch,
+        limit: 20,
+        offset: 0,
+      );
+
+      // PRIVACY RULE: Filter private collections if not the owner (Safeguard)
       if (!isOwnProfile) {
         collections = collections.where((c) => !c.isPrivate).toList();
+      }
+      
+      final bool hasMore = collections.length >= 20;
+
+      // GET EXACT SHOTS COUNT
+      int totalShotsCount = 0;
+      try {
+        var countQuery = supabase
+            .from('collections')
+            .select('id')
+            .eq('user_id', userIdToFetch);
+        
+        if (!isOwnProfile) {
+          countQuery = countQuery.eq('is_private', false);
+        }
+        
+        final res = await countQuery.count(CountOption.exact);
+        totalShotsCount = res.count;
+      } catch (e) {
+        debugPrint('[ProfileController] Error getting exact shots count: $e');
+        totalShotsCount = collections.length;
       }
 
       // Fetch total likes received on current user's collections
@@ -163,7 +201,10 @@ class ProfileController extends FamilyAsyncNotifier<ProfileState, String?> {
         totalLikes: totalLikes,
         followersCount: followersCount,
         followingCount: followingCount,
+        totalShotsCount: totalShotsCount,
         isFollowing: isFollowing,
+        hasMoreCollections: hasMore,
+        isLoadingMoreCollections: false,
       );
     } catch (e) {
       debugPrint('[ProfileController] Error fetching profile data: $e');
@@ -174,6 +215,49 @@ class ProfileController extends FamilyAsyncNotifier<ProfileState, String?> {
   Future<void> refreshProfile() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _fetchProfileData(arg));
+  }
+  
+  Future<void> loadMoreCollections() async {
+    final currentState = state.value;
+    if (currentState == null || currentState.user == null) return;
+    if (currentState.isLoadingMoreCollections || !currentState.hasMoreCollections) return;
+
+    final targetUserId = arg ?? Supabase.instance.client.auth.currentUser?.id;
+    if (targetUserId == null) return;
+
+    // Optimistically set loading state
+    state = AsyncData(currentState.copyWith(isLoadingMoreCollections: true));
+
+    try {
+      final feedRepository = ref.read(feedRepositoryProvider);
+      final offset = currentState.collections.length;
+      final limit = 20;
+
+      var additionalCollections = await feedRepository.getUserFeed(
+        targetUserId,
+        limit: limit,
+        offset: offset,
+      );
+
+      final isOwnProfile = targetUserId == Supabase.instance.client.auth.currentUser?.id;
+      if (!isOwnProfile) {
+        additionalCollections = additionalCollections.where((c) => !c.isPrivate).toList();
+      }
+
+      final hasMore = additionalCollections.length >= limit;
+
+      state = AsyncData(
+        currentState.copyWith(
+          collections: [...currentState.collections, ...additionalCollections],
+          hasMoreCollections: hasMore,
+          isLoadingMoreCollections: false,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[ProfileController] Error loading more collections: $e');
+      // Revert loading state
+      state = AsyncData(currentState.copyWith(isLoadingMoreCollections: false));
+    }
   }
 
   Future<void> toggleFollow() async {
