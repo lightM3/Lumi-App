@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/comment_cache_provider.dart';
 import '../controllers/comment_list_controller.dart';
 import 'comment_tile_widget.dart';
 import 'comment_input_bar.dart';
@@ -37,6 +38,9 @@ class _CollectionCommentsSheetState
 
   @override
   Widget build(BuildContext context) {
+    // Keep the cache alive as long as this sheet is open.
+    ref.watch(commentCacheProvider);
+
     final listStateAsync = ref.watch(
       commentListControllerProvider(widget.collectionId),
     );

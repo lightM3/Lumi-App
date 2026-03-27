@@ -27,6 +27,7 @@ class CommentTileWidget extends ConsumerStatefulWidget {
 class _CommentTileWidgetState extends ConsumerState<CommentTileWidget> {
   bool _isLoadingFirstReply = false;
   bool _isLoadingMoreReplies = false;
+  bool _isLiking = false;
 
   @override
   void initState() {
@@ -347,15 +348,20 @@ class _CommentTileWidgetState extends ConsumerState<CommentTileWidget> {
 
                     // Like button
                     GestureDetector(
-                      onTap: () {
+                      onTap: _isLiking ? null : () async {
                         if (Supabase.instance.client.auth.currentSession == null) {
                           GuestGuard.checkAuthAndShowModal(context, ref);
                           return;
                         }
+                        setState(() => _isLiking = true);
                         HapticFeedback.selectionClick();
                         ref
                             .read(commentActionControllerProvider)
                             .toggleLike(comment);
+                        
+                        // Spam blocking delay
+                        await Future.delayed(const Duration(milliseconds: 500));
+                        if(mounted) setState(() => _isLiking = false);
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Padding(

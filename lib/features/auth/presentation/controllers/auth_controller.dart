@@ -7,6 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/supabase_auth_repository.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/models/lumi_user.dart';
+import '../../../feed/presentation/controllers/feed_controller.dart';
+import '../../../comment/presentation/providers/comment_cache_provider.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
+import '../../../notifications/presentation/controllers/notification_controller.dart';
 
 // ── Repository Provider ───────────────────────────────────────────────────────
 
@@ -57,6 +61,10 @@ class AuthController extends AsyncNotifier<LumiUser?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signOut();
+      ref.invalidate(feedControllerProvider);
+      ref.invalidate(commentCacheProvider);
+      ref.invalidate(profileControllerProvider);
+      ref.invalidate(notificationControllerProvider);
       return null;
     });
   }

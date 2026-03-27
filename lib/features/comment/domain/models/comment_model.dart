@@ -1,5 +1,6 @@
 // lib/features/comment/domain/models/comment_model.dart
 
+import 'package:supabase_flutter/supabase_flutter.dart';
 class CommentModel {
   const CommentModel({
     required this.id,
@@ -74,12 +75,21 @@ class CommentModel {
     final parentId = map['parent_id'] as String?;
     final content = map['content'] as String;
     final replyCount = map['reply_count'] as int? ?? 0;
-    final likeCount = map['like_count'] as int? ?? 0;
-    
-    // Check if current user liked it via joined table 'comment_likes'
-    final commentLikes = map['comment_likes'] as List<dynamic>? ?? [];
-    final isLiked = currentUserId != null &&
-        commentLikes.any((like) => like['user_id'] == currentUserId);
+    // LÜTFEN ŞU KODU HARFİYEN İLGİLİ YERE (Repository veya Model içine) YAPIŞTIR VE MANTIK KURMA:
+    final String? currentUid = Supabase.instance.client.auth.currentUser?.id;
+    final List<dynamic> rawLikes = (map['comment_likes'] as List<dynamic>?) ?? [];
+
+    bool isLikedByMe = false;
+    if (currentUid != null) {
+      isLikedByMe = rawLikes.any((like) {
+        if (like is Map) {
+          return like['user_id'] == currentUid;
+        }
+        return false;
+      });
+    }
+
+    final int trueLikeCount = rawLikes.length;
 
     final createdAt = DateTime.parse(map['created_at'] as String);
 
@@ -95,8 +105,8 @@ class CommentModel {
       parentId: parentId,
       content: content,
       replyCount: replyCount,
-      likeCount: likeCount,
-      isLiked: isLiked,
+      likeCount: trueLikeCount,
+      isLiked: isLikedByMe,
       createdAt: createdAt,
       authorUsername: username,
       authorAvatarUrl: avatarUrl,

@@ -138,9 +138,43 @@ class _NotificationTile extends StatelessWidget {
   final NotificationModel notification;
 
   String get _message {
-    return notification.type == 'like'
-        ? '${notification.senderUsername} koleksiyonunu beğendi 💜'
-        : '${notification.senderUsername} seni takip etmeye başladı 🔔';
+    switch (notification.type) {
+      case 'like':
+        return '${notification.senderUsername} koleksiyonunu beğendi 💜';
+      case 'comment':
+        return '${notification.senderUsername} koleksiyonuna bir yorum yaptı 💬';
+      case 'comment_like':
+        return '${notification.senderUsername} yorumunu beğendi ❤️';
+      case 'follow':
+      default:
+        return '${notification.senderUsername} seni takip etmeye başladı 🔔';
+    }
+  }
+
+  IconData get _icon {
+    switch (notification.type) {
+      case 'like':
+      case 'comment_like':
+        return LucideIcons.heart;
+      case 'comment':
+        return LucideIcons.messageCircle;
+      case 'follow':
+      default:
+        return LucideIcons.userPlus;
+    }
+  }
+
+  Color get _iconColor {
+    switch (notification.type) {
+      case 'like':
+      case 'comment_like':
+        return AppColors.accentRose;
+      case 'comment':
+        return Colors.blueAccent;
+      case 'follow':
+      default:
+        return const Color(0xFF6C4FCA);
+    }
   }
 
   @override
@@ -201,13 +235,9 @@ class _NotificationTile extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      notification.type == 'like'
-                          ? LucideIcons.heart
-                          : LucideIcons.userPlus,
+                      _icon,
                       size: 10,
-                      color: notification.type == 'like'
-                          ? AppColors.accentRose
-                          : const Color(0xFF6C4FCA),
+                      color: _iconColor,
                     ),
                   ),
                 ),
@@ -245,8 +275,8 @@ class _NotificationTile extends StatelessWidget {
               ),
             ),
 
-            // ── Collection Thumbnail (for likes) ─────────────────────────────
-            if (notification.type == 'like' &&
+            // ── Collection Thumbnail (for likes and comments) ─────────────────────────────
+            if ((notification.type == 'like' || notification.type == 'comment' || notification.type == 'comment_like') &&
                 notification.collectionCoverUrl != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),

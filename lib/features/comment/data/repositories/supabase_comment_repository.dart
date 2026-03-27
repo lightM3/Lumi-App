@@ -5,7 +5,6 @@ import '../../../../core/utils/either.dart';
 import '../../domain/failures/comment_failure.dart';
 import '../../domain/models/comment_model.dart';
 import '../../domain/repositories/comment_repository.dart';
-import '../../../notifications/data/supabase_notification_repository.dart';
 
 class SupabaseCommentRepository implements CommentRepository {
   final SupabaseClient _client;
@@ -143,21 +142,16 @@ class SupabaseCommentRepository implements CommentRepository {
       if (userId == null) return const Left(AuthenticationFailure());
 
       if (isLiked) {
-        await _client.from('comment_likes').upsert({
-          'user_id': userId,
-          'comment_id': commentId,
-        }, onConflict: 'user_id, comment_id');
-
-        // Fire-and-forget notification
-        _notifyCommentLike(commentId: commentId, senderId: userId);
-      } else {
-        await _client.from('comment_likes').delete().match({
+        await _client.from('comment_likes').insert({
           'user_id': userId,
           'comment_id': commentId,
         });
-
-        // Fire-and-forget notification cleanup
-        _removeCommentLikeNotif(commentId: commentId, senderId: userId);
+      } else {
+        await _client
+            .from('comment_likes')
+            .delete()
+            .eq('comment_id', commentId)
+            .eq('user_id', userId);
       }
 
       return const Right(true);
@@ -165,57 +159,6 @@ class SupabaseCommentRepository implements CommentRepository {
       return Left(ServerFailure(e.message));
     } catch (e) {
       return const Left(ServerFailure());
-    }
-  }
-
-  Future<void> _notifyCommentLike({
-    required String commentId,
-    required String senderId,
-  }) async {
-    try {
-      final res = await _client
-          .from('comments')
-          .select('user_id, collection_id')
-          .eq('id', commentId)
-          .single();
-          
-      final ownerId = res['user_id'] as String?;
-      final collectionId = res['collection_id'] as String?;
-      
-      if (ownerId == null || ownerId == senderId || collectionId == null) return;
-
-      final notifRepo = SupabaseNotificationRepository(_client);
-      await notifRepo.insertNotification(
-        type: 'comment_like',
-        receiverId: ownerId,
-        collectionId: collectionId,
-      );
-    } catch (e) {
-      // Background failure silently skipped
-    }
-  }
-
-  Future<void> _removeCommentLikeNotif({
-    required String commentId,
-    required String senderId,
-  }) async {
-    try {
-      final res = await _client
-          .from('comments')
-          .select('user_id')
-          .eq('id', commentId)
-          .single();
-          
-      final ownerId = res['user_id'] as String?;
-      if (ownerId == null || ownerId == senderId) return;
-
-      final notifRepo = SupabaseNotificationRepository(_client);
-      await notifRepo.deleteNotification(
-        type: 'comment_like',
-        receiverId: ownerId,
-      );
-    } catch (e) {
-      // Silently skip
     }
   }
 }

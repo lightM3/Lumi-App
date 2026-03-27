@@ -11,6 +11,8 @@ import 'comment_list_controller.dart';
 import '../../../feed/presentation/controllers/feed_controller.dart';
 import '../../domain/usecases/delete_comment_usecase.dart';
 import '../../domain/usecases/toggle_like_comment_usecase.dart';
+import '../../../notifications/domain/notification_repository.dart';
+import '../../../notifications/presentation/controllers/notification_controller.dart';
 import 'dart:async';
 
 class Unit {
@@ -19,7 +21,6 @@ class Unit {
 
 const unit = Unit();
 
-final Map<String, Timer> _likeDebouncers = {};
 
 class CommentActionController {
   final Ref _ref;
@@ -36,7 +37,10 @@ class CommentActionController {
       ),
       _toggleLike = ToggleLikeCommentUseCase(
         _ref.read(commentRepositoryProvider),
-      );
+      ),
+      _notificationRepository = _ref.read(notificationRepositoryProvider);
+
+  final NotificationRepository _notificationRepository;
 
   /// Optimistically adds a comment (or reply) and then attempts network call.
   /// Reverts and returns Either.Left on failure, or Either.Right upon success.
@@ -132,6 +136,36 @@ class CommentActionController {
         } else {
           cacheNotifier.replaceReplyId(parentId, tempId, realComment);
         }
+
+        // Fire & Forget Notifications
+        try {
+          String? receiverId;
+          if (parentId == null) {
+            final feedState = _ref.read(feedControllerProvider).value;
+            if (feedState != null) {
+              for (final col in feedState) {
+                if (col.collectionId == collectionId) {
+                  receiverId = col.userId;
+                  break;
+                }
+              }
+            }
+          } else {
+            final parent = _ref.read(commentCacheProvider)[parentId];
+            receiverId = parent?.userId;
+          }
+
+          if (receiverId != null && user.id != receiverId) {
+            _notificationRepository.insertNotification(
+              type: 'comment',
+              receiverId: receiverId,
+              collectionId: collectionId,
+            );
+          }
+        } catch (_) {
+          // Ignore
+        }
+
         return const Right(unit);
       },
     );
@@ -184,53 +218,58 @@ class CommentActionController {
     });
   }
 
-  /// Toggles like status with optimistic update and 1-second debounce.
-  void toggleLike(CommentModel comment) {
+  /// Toggles like status with instantaneous optimistic update and strict error rollback.
+  Future<void> toggleLike(CommentModel comment) async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null) return;
+
     final cacheNotifier = _ref.read(commentCacheProvider.notifier);
+    
+    // Previous (rollback) state
+    final originalComment = comment;
 
     final newIsLiked = !comment.isLiked;
     // ensure no negative count
-    final newLikeCount = (comment.likeCount + (newIsLiked ? 1 : -1)).clamp(
-      0,
-      999999,
-    );
+    final newLikeCount = (comment.likeCount + (newIsLiked ? 1 : -1)).clamp(0, 999999);
 
-    // 1. Optimistic Update
+    // 1. Optimistic Update (Immediate UI reaction)
     final updatedComment = comment.copyWith(
       isLiked: newIsLiked,
       likeCount: newLikeCount,
     );
     cacheNotifier.addOrUpdateComment(updatedComment);
 
-    // 2. Debounce Network Call
-    if (_likeDebouncers.containsKey(comment.id)) {
-      _likeDebouncers[comment.id]?.cancel();
-    }
+    // 2. Exact API Request
+    final result = await _toggleLike.call(
+      commentId: comment.id,
+      isLiked: newIsLiked,
+    );
 
-    _likeDebouncers[comment.id] = Timer(
-      const Duration(milliseconds: 1000),
-      () async {
-        _likeDebouncers.remove(comment.id);
-
-        final result = await _toggleLike.call(
-          commentId: comment.id,
-          isLiked: newIsLiked,
-        );
-
-        result.fold(
-          (failure) {
-            // Revert on failure
-            final currentCache = _ref.read(commentCacheProvider)[comment.id];
-            if (currentCache != null) {
-              final revertedComment = currentCache.copyWith(
-                isLiked: comment.isLiked, // Original state
-                likeCount: comment.likeCount,
+    result.fold(
+      (failure) {
+        // Rollback on failure
+        cacheNotifier.addOrUpdateComment(originalComment);
+      },
+      (_) {
+        // Post-Success Side Effects (Notifications)
+        try {
+          if (currentUser.id != comment.userId) {
+            if (newIsLiked) {
+              _notificationRepository.insertNotification(
+                type: 'comment_like',
+                receiverId: comment.userId,
+                collectionId: comment.collectionId,
               );
-              cacheNotifier.addOrUpdateComment(revertedComment);
+            } else {
+              _notificationRepository.deleteNotification(
+                type: 'comment_like',
+                receiverId: comment.userId,
+              );
             }
-          },
-          (_) {}, // Success, do nothing
-        );
+          }
+        } catch (_) {
+          // Ignore notification errors to avoid crashing main flow
+        }
       },
     );
   }
@@ -277,7 +316,7 @@ class CommentActionController {
 }
 
 // Global Provider
-final commentActionControllerProvider = Provider<CommentActionController>((
+final commentActionControllerProvider = Provider.autoDispose<CommentActionController>((
   ref,
 ) {
   return CommentActionController(ref);

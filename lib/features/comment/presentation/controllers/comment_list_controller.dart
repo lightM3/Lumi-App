@@ -28,7 +28,7 @@ class CommentListState {
 }
 
 class CommentListController
-    extends FamilyAsyncNotifier<CommentListState, String> {
+    extends AutoDisposeFamilyAsyncNotifier<CommentListState, String> {
   GetCommentsUseCase get _getComments =>
       GetCommentsUseCase(ref.read(commentRepositoryProvider));
 
@@ -81,7 +81,7 @@ class CommentListController
 }
 
 final commentListControllerProvider =
-    AsyncNotifierProvider.family<
+    AsyncNotifierProvider.autoDispose.family<
       CommentListController,
       CommentListState,
       String

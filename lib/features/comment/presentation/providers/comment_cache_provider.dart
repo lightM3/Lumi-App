@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/comment_model.dart';
 
-class CommentCacheNotifier extends Notifier<Map<String, CommentModel>> {
+class CommentCacheNotifier extends AutoDisposeNotifier<Map<String, CommentModel>> {
   @override
   Map<String, CommentModel> build() => {};
 
@@ -118,11 +118,11 @@ class CommentCacheNotifier extends Notifier<Map<String, CommentModel>> {
 
 // Singleton Cache Provider
 final commentCacheProvider =
-    NotifierProvider<CommentCacheNotifier, Map<String, CommentModel>>(
+    NotifierProvider.autoDispose<CommentCacheNotifier, Map<String, CommentModel>>(
       CommentCacheNotifier.new,
     );
 
 // Family Provider for individual comment cards
-final commentProvider = Provider.family<CommentModel?, String>((ref, id) {
+final commentProvider = Provider.autoDispose.family<CommentModel?, String>((ref, id) {
   return ref.watch(commentCacheProvider)[id];
 });
